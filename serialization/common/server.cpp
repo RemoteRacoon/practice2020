@@ -27,6 +27,9 @@ int main() {
 
     Message* des = new Message;
     deserialize(packet, des);
+    
+    delete des;
+    delete msg;
 
 }
 

@@ -1,49 +1,62 @@
 #include <iostream>
 #include <sys/socket.h>
 #include <sys/types.h>
+#include <netinet/in.h>
 #include <stdlib.h>
-#include <time.h>
+#include <unistd.h>
 #include <cstring>
+#include <time.h>
 #include "message.h"
 
-
-using namespace std;
-
-void deserialize(char* data, Message* msg);
-void serialize(Message* msg, char* data);
-
+void serialize(Message* msg, std::string& data);
 
 int main() {
     srand(time(NULL));
+    const char* mes = "Hello from the tcp server!";
 
-    Message* msg = new Message;
+    Message *msg = new Message;
     msg->priority = 1;
-    msg->messageId = 90;
-    strcpy(msg->message, "Message from the tcp server.");
+    msg->messageId = rand() % 100;
+    strcpy(msg->message, mes);
 
-    char packet[PACKET_SIZE];
+    std::string data;
+    serialize(msg, data);
 
-    serialize(msg, packet);
+    int serverSock = socket(
+        AF_INET,
+        SOCK_STREAM,
+        IPPROTO_TCP
+    );
 
-    Message* des = new Message;
-    deserialize(packet, des);
-    
-    delete des;
-    delete msg;
+    struct sockaddr_in sockAddr {
+        AF_INET,
+        htons(45678),
+        htonl(INADDR_ANY)
+    };
+
+    bind(serverSock, (struct sockaddr*)(&sockAddr), sizeof(sockAddr));
+
+    listen(serverSock, SOMAXCONN);
+
+    while (1) {
+        int acceptor = accept(serverSock, 0 ,0);
+
+        send(acceptor, data.c_str(), data.size(), MSG_NOSIGNAL);
+        shutdown(acceptor, SHUT_RDWR);
+        close(acceptor);
+    }
 
 }
 
 
-void serialize(Message* msg, char* data)
-{
-    memcpy(data, msg, sizeof(msg));
-}
 
-void deserialize(char* data, Message* msg)
-{
-    memcpy(msg, data, sizeof(data));
 
-    cout << msg->message << endl;
-    cout << msg->messageId << endl;
-    cout << msg->priority << endl;
+void serialize(Message* msg, std::string& data)
+{
+    data.append(std::to_string(msg->messageId));
+    data += SEP;
+    data.append(std::to_string(msg->priority));
+    data += SEP;
+    data.append(msg->message);
+    data += '\0';
 }

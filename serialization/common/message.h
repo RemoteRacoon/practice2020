@@ -1,9 +1,9 @@
 #define MESSAGE_SIZE 512
-#define PACKET_SIZE sizeof(Message)
-#include <stdlib.h>
+#define SEP '_'
 
 typedef struct Message {
     int messageId;
     int priority;
     char message[MESSAGE_SIZE];
+
 } Message;

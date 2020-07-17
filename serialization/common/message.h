@@ -1,9 +1,9 @@
-#define MESSAGE_SIZE 512
+#define SEQ_LEN 2048
 #define SEP '_'
 
 typedef struct Message {
     int messageId;
     int priority;
-    char message[MESSAGE_SIZE];
+    char* message[SEQ_LEN];
 
 } Message;

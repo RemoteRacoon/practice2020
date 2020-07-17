@@ -5,7 +5,7 @@
 #include <stdlib.h>
 #include <unistd.h>
 #include <cstring>
-#include "message.h"
+#include "../message.h"
 
 using namespace std;
 

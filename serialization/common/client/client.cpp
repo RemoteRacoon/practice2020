@@ -6,15 +6,24 @@
 #include <unistd.h>
 #include <cstring>
 #include "../message.h"
+#include "deserializer.h"
 
 using namespace std;
 
-void deserialize(std::string& data, Message* msg);
+
+std::ostream& operator << (std::ostream& os, Message* mes) {
+    os << "Message id: " << mes->messageId << std::endl;
+    os << "Priority: " << mes->priority << std::endl;
+    os << "Message: " << mes->message << std::endl;
+}
 
 int main() {
-    Message* response = new Message;
-    char buffer[512];
+    Message* response = new Message();
     std::string data;
+    std::string msgSize;
+
+    const void* ptrData = data.c_str();
+    const void* ptrMsgSize = msgSize.c_str();
 
     int clientSock = socket(
         AF_INET,
@@ -22,64 +31,29 @@ int main() {
         IPPROTO_TCP
     );
 
-    struct sockaddr_in sockAddr {
-        AF_INET,
-        htons(45678),
-        htonl(INADDR_ANY)
-    };
+    struct sockaddr_in sockAddr;
+    sockAddr.sin_family = AF_INET;
+    sockAddr.sin_port = htons(6666);
+    sockAddr.sin_addr.s_addr = htonl(INADDR_ANY);
 
     connect(clientSock, (const sockaddr*)(&sockAddr), sizeof(sockAddr));
-    recv(clientSock, buffer, sizeof(buffer), MSG_NOSIGNAL);
 
-    data = buffer;
-    deserialize(data, response);
+    recv(clientSock, (void*)ptrMsgSize, 512, MSG_NOSIGNAL);
+    msgSize = static_cast<const char*>(ptrMsgSize);
+    std::cout << msgSize << std::endl;
+
+    recv(clientSock, (void*)ptrData, atoi(msgSize.c_str()) , MSG_NOSIGNAL);
+    data = static_cast<const char*>(ptrData);
+    std::cout << data.substr(0, 20) << std::endl;
 
     shutdown(clientSock, SHUT_RDWR);
     close(clientSock);
 
+    Client::deserialize(data, response);
 
-    cout << response->messageId << endl;
-    cout << response->priority << endl;
-    cout << response->message << endl;
+    std::cout << response;
 
     return 0;
 
 }
 
-
-
-void deserialize(std::string& data, Message* msg)
-{
-    std::string buffer;
-
-    bool messageIdSet = 0;
-    bool prioritySet = 0;
-    bool messageSet = 0;
-    size_t dataSize = data.size();
-
-    for (int i = 0; i < dataSize; i++) {
-
-        if (data[i] == SEP && !messageIdSet) {
-            msg->messageId = atoi(buffer.c_str());
-            buffer.clear();
-            messageIdSet = true;
-            continue;
-        }
-
-        if (data[i] == SEP && !prioritySet) {
-            msg->priority = atoi(buffer.c_str());
-            buffer.clear();
-            prioritySet = true;
-            continue;
-        }
-
-        if ((data[i] == SEP || i == dataSize - 1) && !messageSet) {
-            buffer += data[i];
-            strcpy(msg->message, buffer.c_str());
-            buffer.clear();
-            messageSet = true;
-        }
-
-        buffer += data[i];
-    }
-}

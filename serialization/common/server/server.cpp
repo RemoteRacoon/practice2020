@@ -9,32 +9,30 @@
 #include <time.h>
 #include "../message.h"
 #include "random.h"
+#include "serializer.h"
+
+
+typedef unsigned int message_size;
 
 int main(int argc, char** argv) {
     srand(time(NULL));
-
-    std::vector<std::string> data;
-
-    data.resize(2048);
+    message_size i,j;
 
     if (argc == 3) {
-        int rows = atoi(argv[1]);
-        int cols = atoi(argv[1]);
-
-        for (int i = 0; i < rows; i++) {
-            for (int j = 0; j < cols; j++) {
-                std::string str = Server::generate_random_sequence(SEQ_LEN);
-                data.push_back(str);
-            }
-        }
+        i = atoi(argv[1]);
+        j = atoi(argv[2]);
+    } else {
+        i = SEQ_LEN;
+        j = SEQ_LEN;
     }
-    
-    Message *msg = new Message;
-    msg->priority = 1;
-    msg->messageId = rand() % 100;
 
-    for (int i = 0; i < SEQ_LEN; i++) {
-        strcpy(msg->message[i], data[i].c_str());
+    Message *msg = new Message();
+    msg->messageId = rand() % 100;
+    msg->priority = rand() % 10;
+
+    for (int it = 0; it < i; it++) {
+        std::string str = Server::generate_random_sequence(j);
+        msg->append(str);
     }
 
     int serverSock = socket(
@@ -43,22 +41,41 @@ int main(int argc, char** argv) {
         IPPROTO_TCP
     );
 
-    struct sockaddr_in sockAddr {
-        AF_INET,
-        htons(45678),
-        htonl(INADDR_ANY)
-    };
+    if (serverSock  < 0) {
+        fprintf(stderr, "Cannot create socket");
+        exit(-1);
+    }
+
+    struct sockaddr_in sockAddr;
+    sockAddr.sin_family = AF_INET;
+    sockAddr.sin_port = htons(6666);
+    sockAddr.sin_addr.s_addr = htonl(INADDR_ANY);
+
+    std::string serializable;
+    Server::serialize(msg, serializable);
 
     bind(serverSock, (struct sockaddr*)(&sockAddr), sizeof(sockAddr));
 
     listen(serverSock, SOMAXCONN);
 
-    // while (1) {
-    //     int acceptor = accept(serverSock, 0 ,0);
 
-    //     shutdown(acceptor, SHUT_RDWR);
-    //     close(acceptor);
-    // }
+    int mesSize = serializable.length();
+    std::string size = std::to_string(mesSize);
+
+    char buffer[512];
+
+    while (1) {
+        int acceptor = accept(serverSock, (struct sockaddr*)NULL, NULL);
+        send(acceptor, size.c_str(), atoi(size.c_str()), MSG_NOSIGNAL);
+
+        if (recv(serverSock, buffer, 512, MSG_NOSIGNAL) != -1) {
+            send(acceptor, serializable.c_str(), serializable.length(), MSG_NOSIGNAL);
+            memset(buffer, 0, 512);
+        };
+
+        shutdown(acceptor, SHUT_RDWR);
+        close(acceptor);
+    }
 
 }
 

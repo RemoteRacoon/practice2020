@@ -1,3 +1,3 @@
 # TCP Server
 
-**usage**: ./server <number> <number>
+**usage**: ./server \<number\> \<number\>

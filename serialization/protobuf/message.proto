@@ -1,0 +1,9 @@
+syntax = "proto2";
+
+package practice;
+
+message Message {
+  required int32 messageId = 1;
+  required int32 priority = 2;
+  required string message = 3;
+}

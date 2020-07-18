@@ -11,10 +11,6 @@ typedef struct Message {
     int priority;
     std::string message;
 
-    Message() {
-        message.resize(SEQ_LEN * SEQ_LEN);
-    }
-
     void append(std::string& str) {
         this->message.append(str);
     }

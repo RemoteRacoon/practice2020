@@ -42,7 +42,7 @@ int main(int argc, char** argv) {
     );
 
     if (serverSock  < 0) {
-        fprintf(stderr, "Cannot create socket");
+        std::cerr << "Cannot create a server socket" << std::endl;
         exit(-1);
     }
 
@@ -58,7 +58,6 @@ int main(int argc, char** argv) {
 
     listen(serverSock, SOMAXCONN);
 
-
     int mesSize = serializable.length();
     std::string size = std::to_string(mesSize);
 
@@ -66,9 +65,9 @@ int main(int argc, char** argv) {
 
     while (1) {
         int acceptor = accept(serverSock, (struct sockaddr*)NULL, NULL);
-        send(acceptor, size.c_str(), atoi(size.c_str()), MSG_NOSIGNAL);
+        send(acceptor, size.c_str(), size.length(), MSG_NOSIGNAL);
 
-        if (recv(serverSock, buffer, 512, MSG_NOSIGNAL) != -1) {
+        if (recv(acceptor, buffer, 512, MSG_NOSIGNAL) != -1) {
             send(acceptor, serializable.c_str(), serializable.length(), MSG_NOSIGNAL);
             memset(buffer, 0, 512);
         };

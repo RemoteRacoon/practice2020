@@ -19,11 +19,10 @@ std::ostream& operator << (std::ostream& os, Message* mes) {
 
 int main() {
     Message* response = new Message();
-    std::string data;
-    std::string msgSize;
+    char* data;
+    int size;
 
-    const void* ptrData = data.c_str();
-    const void* ptrMsgSize = msgSize.c_str();
+    const char* msgSize = new char[128];
 
     int clientSock = socket(
         AF_INET,
@@ -38,18 +37,23 @@ int main() {
 
     connect(clientSock, (const sockaddr*)(&sockAddr), sizeof(sockAddr));
 
-    recv(clientSock, (void*)ptrMsgSize, 512, MSG_NOSIGNAL);
-    msgSize = static_cast<const char*>(ptrMsgSize);
-    std::cout << msgSize << std::endl;
+    recv(clientSock, (void*)msgSize, 128, MSG_NOSIGNAL);
 
-    recv(clientSock, (void*)ptrData, atoi(msgSize.c_str()) , MSG_NOSIGNAL);
-    data = static_cast<const char*>(ptrData);
-    std::cout << data.substr(0, 20) << std::endl;
+    send(clientSock, msgSize, sizeof(msgSize), MSG_NOSIGNAL);
+
+
+    size = atoi(msgSize);
+    data = new char[size];
+
+    recv(clientSock, data, size, MSG_NOSIGNAL);
 
     shutdown(clientSock, SHUT_RDWR);
     close(clientSock);
 
-    Client::deserialize(data, response);
+    std::string buffer;
+    buffer = data;
+
+    Client::deserialize(buffer, response);
 
     std::cout << response;
 

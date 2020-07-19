@@ -55,7 +55,6 @@ int main(int argc, char **argv)
 
         int size = atoi(msgSize.get());
         std::unique_ptr<char[]> mesBuffer(new char[size]);
-
         if (recv(clientSock, mesBuffer.get(), size, MSG_NOSIGNAL) != -1)
         {
             start = clock();

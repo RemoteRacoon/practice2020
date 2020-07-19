@@ -12,15 +12,15 @@
 void ShowMessage(practice::Message &message)
 {
     std::cout << "Message id: " << message.messageid() << std::endl;
-    std::cout << "Message id: " << message.priority() << std::endl;
-    std::cout << "Message id: " << message.message() << std::endl;
+    std::cout << "Message priority " << message.priority() << std::endl;
+    std::cout << "Message content: " << message.message() << std::endl;
 }
 
 int main(int argc, char **argv)
 {
     GOOGLE_PROTOBUF_VERIFY_VERSION;
 
-    std::ofstream file("benchmark.txt", std::ios_base::app);
+    std::ofstream file("benchmark.txt", std::ios_base::out);
     clock_t start;
     clock_t end;
 
@@ -36,29 +36,46 @@ int main(int argc, char **argv)
 
     file << "Time elapsed (sec)" << std::endl;
 
+    connect(clientSock, (struct sockaddr *)(&sockAddr), sizeof(sockAddr));
+
     for (int i = 0; i < 10; i++)
     {
         practice::Message message;
-        connect(clientSock, (struct sockaddr *)(&sockAddr), sizeof(sockAddr));
+        std::unique_ptr<char[]> msgSize(new char[32]);
 
-        start = clock();
-
-        if (!message.ParseFromFileDescriptor(clientSock))
+        if (recv(clientSock, msgSize.get(), 32, MSG_NOSIGNAL) != -1)
         {
-            std::cerr << "Failed to parse message." << std::endl;
+            send(clientSock, "OK", 2, MSG_NOSIGNAL);
+        }
+        else
+        {
+            std::cerr << "Cannot receive packet size" << std::endl;
             return -1;
         }
 
-        end = clock() - start;
+        int size = atoi(msgSize.get());
+        std::unique_ptr<char[]> mesBuffer(new char[size]);
 
-        file << ((float)end) / CLOCKS_PER_SEC << std::endl;
+        if (recv(clientSock, mesBuffer.get(), size, MSG_NOSIGNAL) != -1)
+        {
+            start = clock();
 
-        ShowMessage(message);
+            message.ParseFromArray(mesBuffer.get(), size);
 
-        shutdown(clientSock, SHUT_RDWR);
-        close(clientSock);
+            end = clock() - start;
+            file << ((float)end) / CLOCKS_PER_SEC << std::endl;
+
+            ShowMessage(message);
+        }
+        else
+        {
+            std::cerr << "Cannot receive message" << std::endl;
+            return -1;
+        }
     }
 
+    shutdown(clientSock, SHUT_RDWR);
+    close(clientSock);
     file.close();
     google::protobuf::ShutdownProtobufLibrary();
 }

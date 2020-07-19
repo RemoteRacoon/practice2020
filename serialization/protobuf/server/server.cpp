@@ -68,9 +68,10 @@ int main(int argc, char **argv)
         }
     }
 
+    int acceptor = accept(serverSock, (struct sockaddr *)NULL, NULL);
+
     while (1)
     {
-
         practice::Message message;
 
         std::uint32_t mesId = rand() % 100;
@@ -80,19 +81,26 @@ int main(int argc, char **argv)
         message.set_priority(priority);
         message.set_message(sequence.c_str());
 
-        int acceptor = accept(serverSock, (struct sockaddr *)NULL, NULL);
-
         size_t size = message.ByteSizeLong();
 
-        // std::unique_ptr<char[]> serialized(new char[size]);
-        // message.SerializeToArray(&serialized[0], static_cast<int>(size));
-        message.SerializeToFileDescriptor(acceptor);
-        // send(acceptor, serialized.get(), size, MSG_NOSIGNAL);
+        const char *sSize = std::to_string(size).c_str();
 
-        shutdown(acceptor, SHUT_RDWR);
-        close(acceptor);
+        send(acceptor, sSize, std::to_string(size).length(), MSG_NOSIGNAL);
+
+        char successBuffer[2];
+        if (recv(acceptor, successBuffer, 2, MSG_NOSIGNAL) != -1)
+        {
+
+            std::unique_ptr<char[]> serialized(new char[size]);
+
+            message.SerializeToArray(&serialized[0], static_cast<int>(size));
+
+            send(acceptor, serialized.get(), size, MSG_NOSIGNAL);
+        }
     }
 
+    shutdown(acceptor, SHUT_RDWR);
+    close(acceptor);
     close(serverSock);
 
     google::protobuf::ShutdownProtobufLibrary();

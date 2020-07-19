@@ -1,4 +1,6 @@
 #include <iostream>
+#include <tuple>
+#include <list>
 #include <fstream>
 #include <sys/types.h>
 #include <sys/socket.h>
@@ -36,22 +38,20 @@ int main(int argc, char **argv)
 
     for (int i = 0; i < 10; i++)
     {
-        char *buffer = new char[2048];
-
         practice::Message message;
         connect(clientSock, (struct sockaddr *)(&sockAddr), sizeof(sockAddr));
 
-        recv(clientSock, buffer, 2048, MSG_NOSIGNAL);
-
         start = clock();
 
-        if (!message.ParseFromArray(buffer, 2048))
+        if (!message.ParseFromFileDescriptor(clientSock))
         {
-            std::cerr << "Failed to parse address book." << std::endl;
+            std::cerr << "Failed to parse message." << std::endl;
             return -1;
-        };
+        }
 
         end = clock() - start;
+
+        file << ((float)end) / CLOCKS_PER_SEC << std::endl;
 
         ShowMessage(message);
 

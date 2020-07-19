@@ -1,6 +1,7 @@
 #include <iostream>
 #include <fstream>
 #include <sstream>
+#include <csignal>
 #include <streambuf>
 #include <sys/types.h>
 #include <sys/socket.h>
@@ -11,9 +12,16 @@
 #include <google/protobuf/io/zero_copy_stream_impl.h>
 #include "random.h"
 
+void signalHandler(int signum)
+{
+    google::protobuf::ShutdownProtobufLibrary();
+    exit(signum);
+}
+
 int main(int argc, char **argv)
 {
     GOOGLE_PROTOBUF_VERIFY_VERSION;
+    signal(SIGINT, signalHandler);
 
     int i, j;
 
@@ -45,11 +53,6 @@ int main(int argc, char **argv)
         j = atoi(argv[2]);
     }
 
-    practice::Message message;
-
-    std::uint32_t mesId = rand() % 100;
-    std::uint32_t priority = rand() % 100;
-
     std::string sequence;
 
     if (j == 1)
@@ -65,25 +68,32 @@ int main(int argc, char **argv)
         }
     }
 
-    message.set_messageid(mesId);
-    message.set_priority(priority);
-    message.set_message(sequence.c_str());
-
     while (1)
     {
+
+        practice::Message message;
+
+        std::uint32_t mesId = rand() % 100;
+        std::uint32_t priority = rand() % 100;
+
+        message.set_messageid(mesId);
+        message.set_priority(priority);
+        message.set_message(sequence.c_str());
+
         int acceptor = accept(serverSock, (struct sockaddr *)NULL, NULL);
 
         size_t size = message.ByteSizeLong();
 
-        std::ostringstream s;
-
-        message.SerializeToOstream(&s);
-
-        send(acceptor, s.str().c_str(), size, MSG_NOSIGNAL);
+        // std::unique_ptr<char[]> serialized(new char[size]);
+        // message.SerializeToArray(&serialized[0], static_cast<int>(size));
+        message.SerializeToFileDescriptor(acceptor);
+        // send(acceptor, serialized.get(), size, MSG_NOSIGNAL);
 
         shutdown(acceptor, SHUT_RDWR);
         close(acceptor);
     }
+
+    close(serverSock);
 
     google::protobuf::ShutdownProtobufLibrary();
 }

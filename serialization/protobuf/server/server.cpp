@@ -22,6 +22,9 @@ int main(int argc, char **argv)
 {
     GOOGLE_PROTOBUF_VERIFY_VERSION;
     signal(SIGINT, signalHandler);
+    struct timeval timeout;
+    timeout.tv_sec = 10;
+    timeout.tv_usec = 0;
 
     int i, j;
 
@@ -70,6 +73,8 @@ int main(int argc, char **argv)
 
     int acceptor = accept(serverSock, (struct sockaddr *)NULL, NULL);
 
+    setsockopt(acceptor, SOL_SOCKET, SO_RCVTIMEO, (char *)&timeout, sizeof(timeout));
+
     while (1)
     {
         practice::Message message;
@@ -88,7 +93,7 @@ int main(int argc, char **argv)
         send(acceptor, sSize, std::to_string(size).length(), MSG_NOSIGNAL);
 
         char successBuffer[2];
-        if (recv(acceptor, successBuffer, 2, MSG_NOSIGNAL) != -1)
+        if (recv(acceptor, successBuffer, 2, 0) != -1)
         {
 
             std::unique_ptr<char[]> serialized(new char[size]);

@@ -2,12 +2,14 @@
 #include <fstream>
 #include <sstream>
 #include <csignal>
+#include <set>
 #include <streambuf>
 #include <sys/types.h>
 #include <sys/socket.h>
 #include <netinet/in.h>
 #include <unistd.h>
 #include <time.h>
+#include <fcntl.h>
 #include "../message.pb.h"
 #include <google/protobuf/io/zero_copy_stream_impl.h>
 #include "random.h"
@@ -25,6 +27,7 @@ int main(int argc, char **argv)
     struct timeval timeout;
     timeout.tv_sec = 10;
     timeout.tv_usec = 0;
+    bool flagToStop;
 
     int i, j;
 
@@ -75,7 +78,7 @@ int main(int argc, char **argv)
 
     setsockopt(acceptor, SOL_SOCKET, SO_RCVTIMEO, (char *)&timeout, sizeof(timeout));
 
-    while (1)
+    while (!flagToStop)
     {
         practice::Message message;
 
@@ -93,14 +96,21 @@ int main(int argc, char **argv)
         send(acceptor, sSize, std::to_string(size).length(), MSG_NOSIGNAL);
 
         char successBuffer[2];
-        if (recv(acceptor, successBuffer, 2, 0) != -1)
-        {
 
+        int status = recv(acceptor, successBuffer, 2, 0);
+
+        switch (status)
+        {
+        case -1 ... 0:
+            flagToStop = true;
+            break;
+        case 2:
             std::unique_ptr<char[]> serialized(new char[size]);
 
             message.SerializeToArray(&serialized[0], static_cast<int>(size));
 
             send(acceptor, serialized.get(), size, MSG_NOSIGNAL);
+            break;
         }
     }
 
